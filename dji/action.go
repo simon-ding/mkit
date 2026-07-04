@@ -11,15 +11,14 @@ func (d *DjiModem) GetSms() (string, error) {
 	q := "AT+CMGF?"
 	out, err := d.ExecAT(q)
 	if err != nil {
-		//execute anyway
-		d.ExecAT(`AT+CMGF=1`)
+		return "", err
 	}
 	out = extractMsg(out)
 	if !strings.Contains(out, "+CMGF: 1") {
 		//modem is not in text mode
 		d.ExecAT(`AT+CMGF=1`)
 	}
-	
+
 	input := `AT+CMGL="ALL"`
 	return d.ExecAT(input)
 }
