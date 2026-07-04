@@ -1,14 +1,11 @@
+/*
+Copyright © 2026 NAME HERE <EMAIL ADDRESS>
+
+*/
 package main
 
-import (
-	"log"
-)
+import "mkit/cmd"
 
 func main() {
-	dji, err := NewDjiModem()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dji.AtShell()
+	cmd.Execute()
 }

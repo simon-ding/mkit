@@ -1,4 +1,4 @@
-package main
+package dji
 
 import (
 	"bytes"
@@ -16,10 +16,11 @@ import (
 const (
 	VID = 0x2c7c
 	PID = 0x0125
+	InterfaceNum = 3
 )
 
 func NewDjiModem() (*DjiModem, error) {
-	d := &DjiModem{}
+	d := &DjiModem{ctx: gousb.NewContext()}
 	if err := d.connect(); err != nil {
 		return nil, err
 	}
@@ -29,17 +30,69 @@ func NewDjiModem() (*DjiModem, error) {
 type DjiModem struct {
 	out *gousb.OutEndpoint
 	in  *gousb.InEndpoint
+	ctx *gousb.Context
 }
 
 func (d *DjiModem) connect() error {
-	ctx := gousb.NewContext()
 
-	dev, err := ctx.OpenDeviceWithVIDPID(
+	dev, err := d.ctx.OpenDeviceWithVIDPID(
 		gousb.ID(VID),
 		gousb.ID(PID),
 	)
 	if err != nil {
 		return err
+	}
+	desc := dev.Desc
+
+	// for _, cfg := range dev.Desc.Configs {
+	// 	fmt.Printf("Config %d\n", cfg.Number)
+
+	// 	for _, intf := range cfg.Interfaces {
+	// 		fmt.Printf("  Interface %d\n", intf.Number)
+
+	// 		for _, alt := range intf.AltSettings {
+	// 			fmt.Printf("    Alt %d, Class=%d SubClass=%d Protocol=%d\n", alt.Number, alt.Class, alt.SubClass, alt.Protocol)
+
+	// 			for _, ep := range alt.Endpoints {
+	// 				fmt.Printf(
+	// 					"      EP %d Dir=%v Type=%v MaxPacket=%d\n",
+	// 					ep.Number,
+	// 					ep.Direction,
+	// 					ep.TransferType,
+	// 					ep.MaxPacketSize,
+						
+	// 				)
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+	cfgDesc := desc.Configs[1] // Config 1
+
+	intfDesc := cfgDesc.Interfaces[InterfaceNum] // Interface 3
+
+	alt := intfDesc.AltSettings[0] // AltSetting 0
+
+	var (
+		inNum  int
+		outNum int
+	)
+
+	for _, ep := range alt.Endpoints {
+		switch ep.Direction {
+		case gousb.EndpointDirectionIn:
+			if ep.TransferType == gousb.TransferTypeBulk {
+				inNum = ep.Number
+			}
+		case gousb.EndpointDirectionOut:
+			if ep.TransferType == gousb.TransferTypeBulk {
+				outNum = ep.Number
+			}
+		}
+	}
+
+	if inNum == 0 || outNum == 0 {
+		return fmt.Errorf("bulk endpoints not found")
 	}
 
 	cfg, err := dev.Config(1)
@@ -47,16 +100,17 @@ func (d *DjiModem) connect() error {
 		return err
 	}
 
-	intf, err := cfg.Interface(3, 0)
+	intf, err := cfg.Interface(InterfaceNum, 0)
 	if err != nil {
 		return err
 	}
 
-	out, err := intf.OutEndpoint(4)
+	in, err := intf.InEndpoint(inNum)
 	if err != nil {
 		return err
 	}
-	in, err := intf.InEndpoint(6)
+
+	out, err := intf.OutEndpoint(outNum)
 	if err != nil {
 		return err
 	}
@@ -89,9 +143,6 @@ func (d *DjiModem) AtShell() {
 			log.Printf("ERROR: %v\n", err)
 			continue
 		}
-		if input == "sms" {
-			input = `AT+CMGL="ALL"`
-		}
 		if !strings.HasPrefix(input, "AT") {
 			continue
 		}
@@ -102,6 +153,10 @@ func (d *DjiModem) AtShell() {
 		}
 		fmt.Println(output)
 	}
+}
+
+func (d *DjiModem) Close() error {
+	return d.ctx.Close()
 }
 
 func cleanOutput(s string) string {

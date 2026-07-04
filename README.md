@@ -1,2 +1,2 @@
 # mkit
-manage kit for dji 4g modem
+management kit for dji 4g modem
