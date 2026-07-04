@@ -17,9 +17,10 @@ var usbnetCmd = &cobra.Command{
 	Use:   "usbnet",
 	Short: "get or set usbnet mode",
 	Long: `get or set usbnet mode:
-	0：RNDIS
-	1：ECM
-	2：MBIM
+  0: QMI
+  1：ECM
+  2：MBIM
+  3: RNDIS
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		dji, err := dji.NewDjiModem()
