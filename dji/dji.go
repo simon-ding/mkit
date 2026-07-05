@@ -2,11 +2,13 @@ package dji
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/google/gousb"
 	"golang.org/x/text/encoding/unicode"
@@ -14,9 +16,9 @@ import (
 )
 
 const (
-	VID = 0x2c7c
-	PID = 0x0125
-	InterfaceNum = 3
+	VID          = 0x2c7c
+	PID          = 0x0125
+	InterfaceNum = 2
 )
 
 func NewDjiModem() (*DjiModem, error) {
@@ -60,7 +62,7 @@ func (d *DjiModem) connect() error {
 	// 					ep.Direction,
 	// 					ep.TransferType,
 	// 					ep.MaxPacketSize,
-						
+
 	// 				)
 	// 			}
 	// 		}
@@ -121,13 +123,18 @@ func (d *DjiModem) connect() error {
 }
 
 func (d *DjiModem) ExecAT(at string) (string, error) {
-	_, err := d.out.Write([]byte(at + "\r"))
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := d.out.WriteContext(ctx, []byte(at+"\r"))
 	if err != nil {
 		return "", err
 	}
+
 	buf := make([]byte, 4096)
 
-	_, err = d.in.Read(buf)
+	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err = d.in.ReadContext(ctx, buf)
 	if err != nil {
 		return "", err
 	}
