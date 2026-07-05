@@ -12,18 +12,17 @@ import (
 )
 
 var signals = [4]string{"●○○○", "●●○○", "●●●○", "●●●●"}
-func mapSignal(s int) string {
-	if s <= 0 {
-		return "-"
-	} else if s < 10 {
+func mapSignal(s int) string { //+CSQ: (0-31,99),(0-7,99)
+	if s < 10 {
 		return signals[0]
 	} else if s < 20 {
 		return signals[1]
 	} else if s < 30 {
 		return signals[2]
-	} else {
+	} else if s <= 31 {
 		return signals[3]
 	}
+	return "-"
 }
 
 // infoCmd represents the info command
