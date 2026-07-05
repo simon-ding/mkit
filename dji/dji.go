@@ -123,6 +123,8 @@ func (d *DjiModem) connect() error {
 }
 
 func (d *DjiModem) ExecAT(at string) (string, error) {
+	d.drainInput()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	_, err := d.out.WriteContext(ctx, []byte(at+"\r"))
@@ -131,7 +133,6 @@ func (d *DjiModem) ExecAT(at string) (string, error) {
 	}
 
 	buf := make([]byte, 4096)
-
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	_, err = d.in.ReadContext(ctx, buf)
@@ -139,6 +140,22 @@ func (d *DjiModem) ExecAT(at string) (string, error) {
 		return "", err
 	}
 	return cleanOutput(string(buf)), nil
+}
+
+func (d *DjiModem) drainInput() {
+	if d.in == nil {
+		return
+	}
+
+	buf := make([]byte, 64)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		_, err := d.in.ReadContext(ctx, buf)
+		cancel()
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (d *DjiModem) AtShell() {
